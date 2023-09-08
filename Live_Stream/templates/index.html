@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Streaming</title>
+  </head>
+  <style>
+    #start {
+      background-color: rgb(8, 162, 111);
+      height: 10%;
+      color: black;
+      padding: 10%;
+      font-size: 25px;
+      font-weight: 700;
+      border-radius: 10px;
+      box-shadow: 2px 2px 2px 2px rgba(62, 59, 59, 0.4);
+    }
+    #start:hover {
+      transform: scale(1.1);
+    }
+    #stop {
+      background-color: rgba(235, 44, 10, 0.779);
+      height: 10%;
+      color: black;
+      padding: 10%;
+      font-size: 25px;
+      font-weight: 700;
+      border-radius: 10px;
+      box-shadow: 2px 2px 2px 2px rgba(62, 59, 59, 0.4);
+    }
+    #stop:hover {
+      transform: scale(1.1);
+    }
+  </style>
+  <body>
+    <button id="start" style="display: none">START STREAMING</button>
+    <button id="stop" style="display: none">STOP STREAMING</button>
+  </body>
+
+  <script>
+    const bufferQueue = [];
+    const url = "ws://localhost:8000/ws/send/blob"; 
+    const ws = new WebSocket(url);
+    const startButton = document.getElementById("start");
+    const stopButton = document.getElementById("stop");
+    let mediaRecorder, stream, intervalId;
+
+    ws.onopen = () => {
+      startButton.style.display = "block";
+    };
+
+    startButton.addEventListener("click", () => {
+      stopButton.style.display = "block";
+      startButton.style.display = "none";
+      startStreaming();
+    });
+
+    stopButton.addEventListener("click", () => {
+      clearInterval(intervalId);
+      mediaRecorder.stop();
+      if (bufferQueue.length > 0) {
+        const blob = new Blob(bufferQueue, { type: "video/mp4" });
+        ws.send(blob);
+        bufferQueue.length = 0;
+        console.log("Data sended!");
+      }
+      stream.getTracks().forEach((track) => track.stop());
+      stopButton.style.display = "none";
+      startButton.style.display = "block";
+      ws.close();
+    });
+
+    async function startStreaming() {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,audio:{
+            echoCancellation:true,
+          },
+        });
+        mediaRecorder = new MediaRecorder(stream, {
+          mimeType: "video/webm",
+        });
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            try {
+              bufferQueue.push(event.data);
+            } catch (e) {
+              console.log(e);
+            }
+          }
+        };
+        mediaRecorder.start();
+      } catch (error) {
+        console.error("Error accessing camera:", error);
+      }
+    }
+    intervalId =setInterval(() => {
+        try{
+        if(mediaRecorder){
+        mediaRecorder.stop();
+        if(bufferQueue.length>0){
+        const blob = new Blob(bufferQueue, { type: "video/mp4" });
+        ws.send(blob);
+        bufferQueue.length = 0;
+        console.log("Data sended!");
+        }
+        mediaRecorder.start();
+        }
+        }catch(error){
+          console.log(error);
+        }
+      },
+      4000);//set this time according to your live streaming rate
+  </script>
+</html>

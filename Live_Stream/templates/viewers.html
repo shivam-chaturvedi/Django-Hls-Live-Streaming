@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Live HLS Video Stream</title>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+</head>
+<body>
+  <video id="video" controls width="640" height="360"></video>
+
+  <script>
+    const video = document.getElementById('video');
+    const hls = new Hls();
+
+    // Replace with the URL of your live HLS stream
+    const streamURL = 'http://localhost:8000/master.m3u8';
+
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MEDIA_ATTACHED, function () {
+      hls.loadSource(streamURL);
+      hls.on(Hls.Events.MANIFEST_PARSED, function () {
+        video.play();
+      });
+    });
+  </script>
+</body>
+</html>
